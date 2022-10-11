@@ -20,48 +20,134 @@ package mylib
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.fsm._
 
 import scala.util.Random
 
 //Hardware definition
-class MyTopLevel extends Component {
-  val io = new Bundle {
-    val cond0 = in  Bool()
-    val cond1 = in  Bool()
-    val flag  = out Bool()
-    val state = out UInt(8 bits)
-  }
-  val counter = Reg(UInt(8 bits)) init(0)
 
-  when(io.cond0){
-    counter := counter + 1
-  }
+// case class config(bitsPerGroup:Int=2, dataWidth:Int=8)
+// {
+// 	require(dataWidth % bitsPerGroup == 0, "Invalid parameter")
+// 	val sigOutWidth = dataWidth / bitsPerGroup
+// }
 
-  io.state := counter
-  io.flag  := (counter === 0) | io.cond1
+case class myflow(dataWidth: Int) extends Bundle with IMasterSlave
+{
+	case class datas(dataWidth: Int) extends Bundle
+	{
+		val data1 = UInt(dataWidth bits)
+		val data2 = UInt(dataWidth bits)
+	}
+
+	val dataflow = Flow(datas(dataWidth))
+	val sumflow = Flow(UInt(dataWidth bits))
+
+	override def asMaster(): Unit = 
+	{
+		master(dataflow)
+		slave(sumflow)
+	}
+
+	def inner_add(): Unit =
+	{
+		sumflow.payload := RegNextWhen((dataflow.payload.data1 + dataflow.payload.data2), dataflow.valid);
+		sumflow.valid := RegNext(dataflow.valid, False);
+	}
 }
+
+class myadder(dataWidth: Int) extends Component
+{
+	val io = new Bundle
+	{
+		val validIn = in Bool()
+		val data1 = in UInt(dataWidth bits)
+		val data2 = in UInt(dataWidth bits)
+		val sum = out UInt(dataWidth bits)
+		val sumValid = out Bool()
+	}
+
+	io.sum := RegNextWhen((io.data1 + io.data2), io.validIn);
+	io.sumValid := RegNext(io.validIn, False);
+}
+
+class myadder2(dataWidth: Int) extends Component
+{
+	val io = new Bundle
+	{
+		val dataIn = slave(myflow(dataWidth))
+	}
+
+
+	io.dataIn.sumflow.payload := RegNextWhen((io.dataIn.dataflow.payload.data1 + io.dataIn.dataflow.payload.data2), io.dataIn.dataflow.valid);
+	io.dataIn.sumflow.valid := RegNext(io.dataIn.dataflow.valid, False);
+}
+
+object myadder2
+{
+	def apply(dataWidth: Int, f: myflow)
+	{
+		val adder = new myadder2(dataWidth)
+		f <> adder.io.dataIn
+	}
+}
+
+case class add_area(dataIn: myflow) extends Area
+{
+	dataIn.sumflow.payload := RegNextWhen((dataIn.dataflow.payload.data1 + dataIn.dataflow.payload.data2), dataIn.dataflow.valid);
+	dataIn.sumflow.valid := RegNext(dataIn.dataflow.valid, False);
+}
+
+
+class MyTopLevel(dataWidth: Int=8) extends Component 
+{
+	val io = new Bundle 
+	{
+		// val cond0 = in  Bool()
+		// val cond1 = in  Bool()
+		// val flag  = out Bool()
+		// val state = out UInt(8 bits)
+		// val result = out UInt()
+		val a, b, c = in UInt(5 bits)
+	}
+
+	val tmp = UInt(32 bits)
+	tmp := io.a @@ io.b
+
+
+}
+
 
 //Generate the MyTopLevel's Verilog
-object MyTopLevelVerilog {
-  def main(args: Array[String]) {
-    SpinalVerilog(new MyTopLevel)
-  }
-}
+// object MyTopLevelVerilog 
+// {
+// 	def main(args: Array[String]) 
+// 	{
+// 		SpinalVerilog(new MyTopLevel)
+// 	}
+// }
 
 //Generate the MyTopLevel's VHDL
-object MyTopLevelVhdl {
-  def main(args: Array[String]) {
-    SpinalVhdl(new MyTopLevel)
-  }
-}
+// object MyTopLevelVhdl 
+// {
+// 	def main(args: Array[String]) 
+// 	{
+// 		SpinalVhdl(new MyTopLevel)
+// 	}
+// }
 
 
 //Define a custom SpinalHDL configuration with synchronous reset instead of the default asynchronous one. This configuration can be resued everywhere
-object MySpinalConfig extends SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC))
+object MySpinalConfig extends SpinalConfig(
+	defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC),
+	targetDirectory = "generated/")
 
 //Generate the MyTopLevel's Verilog using the above custom configuration.
-object MyTopLevelVerilogWithCustomConfig {
-  def main(args: Array[String]) {
-    MySpinalConfig.generateVerilog(new MyTopLevel)
-  }
+object MyTopLevelVerilogWithCustomConfig 
+{
+	def main(args: Array[String]) 
+	{
+		// val conf = new config()
+		MySpinalConfig.generateVerilog(new MyTopLevel)
+	}
 }

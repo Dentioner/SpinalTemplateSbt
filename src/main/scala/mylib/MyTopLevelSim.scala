@@ -1,38 +1,75 @@
 package mylib
 
 import spinal.core._
-import spinal.sim._
+import spinal.lib._
 import spinal.core.sim._
 
-import scala.util.Random
+class addsim(dataWidth: Int) extends MyTopLevel(dataWidth)
+{
+	def init =
+	{
+		clockDomain.forkStimulus(10)
+		io.addflow0.dataflow.valid #= false
+		io.addflow1.dataflow.valid #= false
+		clockDomain.waitSampling(10)
+	}
 
-
-//MyTopLevel's testbench
-object MyTopLevelSim {
-  def main(args: Array[String]) {
-    SimConfig.withWave.doSim(new MyTopLevel){dut =>
-      //Fork a process to generate the reset and the clock on the dut
-      dut.clockDomain.forkStimulus(period = 10)
-
-      var modelState = 0
-      for(idx <- 0 to 99){
-        //Drive the dut inputs with random values
-        dut.io.cond0 #= Random.nextBoolean()
-        dut.io.cond1 #= Random.nextBoolean()
-
-        //Wait a rising edge on the clock
-        dut.clockDomain.waitRisingEdge()
-
-        //Check that the dut values match with the reference model ones
-        val modelFlag = modelState == 0 || dut.io.cond1.toBoolean
-        assert(dut.io.state.toInt == modelState)
-        assert(dut.io.flag.toBoolean == modelFlag)
-
-        //Update the reference model value
-        if(dut.io.cond0.toBoolean) {
-          modelState = (modelState + 1) & 0xFF
-        }
-      }
-    }
-  }
+	def test(f: myflow, data1: Int, data2: Int) =
+	{
+		f.dataflow.valid #= true
+		f.dataflow.data1 #= data1
+		f.dataflow.data2 #= data2
+		clockDomain.waitSampling()
+		f.dataflow.valid #= false
+		clockDomain.waitSamplingWhere(f.sumflow.valid.toBoolean)
+		assert((data1 + data2) == f.sumflow.payload.toInt, "data Mismathc")
+	}
 }
+
+object mytestbench extends App
+{
+
+//	def main(args: Array[String]): Unit =
+	{
+
+
+		SimConfig
+		.withWave
+		.withConfig(SpinalConfig(
+			defaultClockDomainFrequency = FixedFrequency(100 MHz),
+			defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC)
+		))
+		.compile(new addsim(8))
+		.doSim
+		{
+			dut =>
+				dut.init
+				dut.test(dut.io.addflow0, 3, 5)
+				dut.test(dut.io.addflow1, 3, 5)
+		}
+	}
+}
+
+
+//object DutTest
+//{
+//	def main(args: Array[String]): Unit =
+//	{
+//		SimConfig
+//			.withWave
+//			.withConfig(SpinalConfig(
+//				defaultClockDomainFrequency = FixedFrequency(100 MHz),
+//				defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC)))
+//			.compile(new addInstSim(8))
+//			.doSim
+//			{
+//				dut =>
+//						dut.init
+//						dut.test(dut.io.addflow0, 3, 5)
+//						dut.test(dut.io.addflow1, 3, 5)
+//				// Simulation code here
+//			}
+//	}
+//}
+
+
