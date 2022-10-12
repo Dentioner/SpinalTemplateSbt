@@ -20,6 +20,7 @@ package mylib
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.bus.amba4.axilite.AxiLite4
 import spinal.lib.fsm._
 
 import scala.util.Random
@@ -108,13 +109,19 @@ class MyTopLevel(dataWidth: Int=8) extends Component
 		// val flag  = out Bool()
 		// val state = out UInt(8 bits)
 		// val result = out UInt()
-		val a, b, c = in UInt(5 bits)
+		val liteIn = slave(AxiLite4(32, 32))
+		val liteOut = master(AxiLite4(64, 64))
 	}
 
-	val tmp = UInt(32 bits)
-	tmp := io.a @@ io.b
+//	io.liteIn <> io.liteOut
 
-
+	import BundleImplicit._
+//	io.liteIn connect io.liteOut
+	val alite = AxiLite4(64, 32)
+	alite connect io.liteIn
+	io.liteOut connect alite
+//	io.liteIn connect alite
+//	alite connect io.liteOut
 }
 
 
