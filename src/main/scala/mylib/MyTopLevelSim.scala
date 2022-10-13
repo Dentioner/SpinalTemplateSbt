@@ -50,6 +50,37 @@ import spinal.core.sim._
 //	}
 //}
 
+object MyTopLevelSim extends App
+{
+	SimConfig
+		.withWave
+		// .withConfig(SpinalConfig(
+		// 	defaultClockDomainFrequency = FixedFrequency(100 MHz),
+		// 	defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC)
+		// ))
+		.compile(MyTopLevel())
+		.doSim
+		{
+			dut =>
+				// dut.init
+				// dut.test(dut.io.addflow0, 3, 5)
+				// dut.test(dut.io.addflow1, 3, 5)
+				dut.clockDomain.forkStimulus(10)
+				dut.clockDomain.waitSampling()
+
+				dut.io.data1 #= 1
+				dut.io.data2 #= 2
+				dut.io.data3 #= 3
+				dut.io.data4 #= 4
+				// sleep(10)
+				// println(s"${dut.io.sum.toInt}")
+				dut.clockDomain.waitSampling(10)
+
+			println(s"${dut.io.sum1.toInt}")
+			println(s"${dut.io.sum2.toInt}")
+		}
+
+}
 
 //object DutTest
 //{

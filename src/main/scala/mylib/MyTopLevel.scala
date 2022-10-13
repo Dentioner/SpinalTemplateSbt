@@ -100,7 +100,7 @@ case class add_area(dataIn: myflow) extends Area
 }
 
 
-class MyTopLevel(dataWidth: Int=8) extends Component 
+case class MyTopLevel(dataWidth: Int=8) extends Component
 {
 	val io = new Bundle 
 	{
@@ -109,21 +109,55 @@ class MyTopLevel(dataWidth: Int=8) extends Component
 		// val flag  = out Bool()
 		// val state = out UInt(8 bits)
 		// val result = out UInt()
-		val liteIn = slave(AxiLite4(32, 32))
-		val liteOut = master(AxiLite4(64, 64))
+		val data1, data2, data3, data4 = in UInt (8 bits)
+		val sum1, sum2 = out UInt (8 bits)
 	}
+	noIoPrefix()
+	// val _ = new Area
+	// {
+	// 	val sumInst1, sumInst2 = mysum()
+	// 	sumInst1.io.data1 <> io.data1
+	// 	sumInst1.io.data2 <> io.data2
+	// 	sumInst1.io.sum <> io.sum1
+	//
+	//
+	// 	sumInst2.io.data1 <> io.data3
+	// 	sumInst2.io.data2 <> io.data4
+	// 	sumInst2.io.sum <> io.sum2
+	// }.setName("")
 
-//	io.liteIn <> io.liteOut
+	val sumInst1, sumInst2 = mysum()
+	sumInst1.io.data1 <> io.data1
+	sumInst1.io.data2 <> io.data2
+	sumInst1.io.sum <> io.sum1
 
-	import BundleImplicit._
-//	io.liteIn connect io.liteOut
-	val alite = AxiLite4(64, 32)
-	alite connect io.liteIn
-	io.liteOut connect alite
-//	io.liteIn connect alite
-//	alite connect io.liteOut
+
+	sumInst2.io.data1 <> io.data3
+	sumInst2.io.data2 <> io.data4
+	sumInst2.io.sum <> io.sum2
+
 }
 
+
+
+case class mysum(dataWidth: Int=8) extends Component
+{
+	val io = new Bundle
+	{
+		// val cond0 = in  Bool()
+		// val cond1 = in  Bool()
+		// val flag  = out Bool()
+		// val state = out UInt(8 bits)
+		// val result = out UInt()
+		val data1 = in UInt (8 bits)
+		val data2 = in UInt (8 bits)
+		val sum = out UInt (8 bits)
+	}
+	noIoPrefix()
+	io.sum.setAsReg()
+	io.sum := io.data1 + io.data2
+
+}
 
 //Generate the MyTopLevel's Verilog
 // object MyTopLevelVerilog 
